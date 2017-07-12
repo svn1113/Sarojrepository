@@ -1,0 +1,61 @@
+#!/usr/bin/bash
+ARCHI=$(echo `uname -m`)
+if [ "$ARCHI" = "sun4v"  ];then
+MBSEG=$(echo `/usr/sbin/ldm list-devices -a memory  |awk ' { print $2 } ' |sort -nr |grep -v SIZE |grep M |tr -d M |awk '{sum+=$1}END{print sum}' |sed '/^$/d' ` )
+GBSEG=$(echo `/usr/sbin/ldm list-devices -a memory  |awk ' { print $2 } ' |sort -nr |grep -v SIZE |grep G |tr -d G |awk '{sum+=$1}END{print sum}' |sed '/^$/d' ` )
+if [ -z "$MBSEG" ];
+then
+TOTALPHYMEM="$GBSEG"
+else
+if [ -z "$GBSEG" ];
+then
+TMBSEG=$(echo "scale=4;$MBSEG/1024" |bc )
+TOTALPHYMEM="$TMBSEG"
+else
+TMBSEG=$(echo "scale=4;$MBSEG/1024" |bc )
+TOTALPHYMEM=$(echo "$TMBSEG" "+" "$GBSEG" |bc)
+fi
+fi
+echo "----------------------------------"
+echo "Total Physical Memory = $TOTALPHYMEM GB"
+echo "----------------------------------"
+GBSEGUSED=$(echo `/usr/sbin/ldm list |awk ' { print $6 } ' |grep -v MEMORY |grep G|tr -d G |awk '{sum+=$1}END{print sum}' |sed '/^$/d' ` )
+MBSEGUSED1=$(echo `/usr/sbin/ldm list |awk ' { print $6 } ' |grep -v MEMORY |grep M|tr -d M |awk '{sum+=$1}END{print sum}'|sed '/^$/d' ` )
+if [ -z "$MBSEGUSED1" ]; then
+TOTALPHYMEMUSED="$GBSEGUSED"
+else
+if [ -z "$GBSEGUSED" ]; then
+MBSEGUSED=$(echo "scale=4;$MBSEGUSED1/1024" |bc )
+TOTALPHYMEMUSED="$MBSEGUSED"
+else
+MBSEGUSED=$(echo "scale=4;$MBSEGUSED1/1024" |bc )
+TOTALPHYMEMUSED=$(echo "$MBSEGUSED" "+" "$GBSEGUSED" |bc)
+fi
+fi
+echo
+echo "---------------------------------------"
+echo "Total Allocated Physical Memory = $TOTALPHYMEMUSED GB"
+echo "---------------------------------------"
+echo
+echo "------------------------------------------"
+echo "Total Unallocated Physical Memory = $(echo "$TOTALPHYMEM" "-" "$TOTALPHYMEMUSED" |bc ) GB"
+echo "------------------------------------------"
+echo
+echo "---------------Memory Allocations for Guest & Primary Domain-----------------"
+ldm list-domain -o memory |egrep -v "NAME|MEMORY" |sed '/^$/d'
+echo "------------------------------------------------------------------------------"
+echo
+echo "Credits:"
+echo "========"
+echo "Saroj Maradapa"
+echo "www.uhc.com"
+echo "------------------------------------------------------------------------------"
+else
+echo "This server is not based on sun4v Architecture"
+echo "-------------------------------------------------------------------------------"
+echo "Credits:"
+echo "********"
+echo "Saroj Maradapa"
+echo "www.uhc.com"
+echo "------------------------------------------------------------------------------"
+fi
